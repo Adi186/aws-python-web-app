@@ -1,0 +1,53 @@
+# Take notice you need to set up the aws ec2 beforehand
+# Instructions:
+    # Launch an EC2 instance
+        # Choose Amazon Linux 2 / Ubuntu as the OS.
+        # Allow inbound traffic on ports 22 (SSH) and 80/443 (if web app).
+        # Select a key pair (.pem file) for SSH access.
+    
+    # Install Required Packages on EC2
+    # SSH into the instance and run:
+        # sudo apt update -y  # Ubuntu/Debian
+        # sudo yum update -y  # Amazon Linux
+        # sudo apt install python3-pip -y
+        # sudo yum install python3-pip -y
+        # pip3 install flask gunicorn  # Example for Flask
+
+    # Get Your EC2 Public IP
+        # Go to AWS Console → EC2 → Instances
+        # Copy the Public IPv4 Address
+
+
+# Don't forget to add the AWS EC2 secrets
+    # EC2_HOST
+    # EC2_USER
+    # EC2_SSH_KEY
+name: Deploy to AWS EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up SSH key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > private_key.pem
+          chmod 600 private_key.pem
+
+      - name: Deploy to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            cd ~/app || mkdir ~/app && cd ~/app
+            git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git || (cd YOUR_REPO && git pull origin main)
+            cd YOUR_REPO
+            pip3 install -r requirements.txt
+            nohup python3 app.py > output.log 2>&1 &
+          EOF
